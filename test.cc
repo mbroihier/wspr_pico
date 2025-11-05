@@ -20,22 +20,21 @@ int main() {
 
   int rf_pin = 21;
   double frequency_Hz = 28126000;
-  //gpio_set_function(rf_pin, GPIO_FUNC_GPCK);
-  //clock_gpio_init(rf_pin, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_USB, 1.0);
   sleep_ms(3000);
-  uint8_t message[nco_wspr::number_of_symbols_in_a_message];
-  printf("message before before object rf_nco is created\n"); 
-  for (uint8_t i = 0; i < nco_wspr::number_of_symbols_in_a_message; i++) {
-    message[i] = i < 40 ? 0 : i < 80 ? 1 : i < 120 ? 2 : 3;
-  }
+  // set wspr message to my call sign, location, and power
+  uint8_t message[] = {3, 3, 2, 2, 2, 2, 2, 2, 3, 0, 2, 0, 3, 1, 1, 0, 0, 0, 1, 2, 2, 1, 2, 1, 1, 1, 3, 0, 0,
+    2, 2, 2, 2, 2, 1, 0, 2, 3, 0, 1, 0, 0, 0, 0, 0, 2, 1, 0, 3, 3, 2, 0, 1, 3, 2, 3, 2, 2, 2, 3, 3, 0, 3, 0,
+    0, 2, 2, 3, 1, 0, 1, 2, 3, 0, 3, 2, 3, 2, 0, 1, 0, 0, 1, 2, 1, 1, 2, 0, 0, 3, 3, 0, 1, 2, 1, 2, 2, 2, 1,
+    0, 0, 0, 0, 2, 3, 0, 0, 3, 0, 0, 1, 3, 1, 2, 3, 3, 0, 2, 1, 3, 0, 1, 0, 0, 2, 3, 1, 1, 2, 2, 2, 0, 0, 3,
+    2, 1, 0, 0, 1, 3, 2, 0, 2, 2, 0, 0, 0, 1, 1, 2, 3, 0, 3, 1, 2, 0, 0, 3, 3, 2, 0, 2, 0, 0, 0, 0, 0, 0 };
+
+  printf("message before before object rf_nco is created\n");
+  
   for (uint8_t i = 0; i < nco_wspr::number_of_symbols_in_a_message; i++) {
     printf("%d ", message[i]);
   }
   printf("\n");
   nco_wspr rf_nco(rf_pin, frequency_Hz, message);
-  //const double sample_frequency_Hz = 15000;
-  //const double sample_frequency_Hz = 10000;
-  //const double waveforms_per_sample = rf_nco.get_waveforms_per_sample(sample_frequency_Hz);
   
   FreqCountRP2.beginTimer(11, 1000);  // pin 11, 1 second
   sleep_ms(2000);
@@ -44,7 +43,6 @@ int main() {
   uint64_t average = 0;
   printf("starting wspr message transfer\n");
   while (1) {
-    //rf_nco.output_sample(0, waveforms_per_sample);
     uint64_t start = time_us_64();
     rf_nco.output_wspr_message();
     uint64_t stop = time_us_64();
