@@ -100,6 +100,13 @@ set(PROJECT5 "test")
 project(${PROJECT5} C CXX ASM)
 
 add_executable(${PROJECT5})
+
+target_compile_definitions(${PROJECT5} PRIVATE
+        WIFI_SSID=\"${WIFI_SSID}\"
+        WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
+        UDP_PORT=${UDP_PORT}
+        )
+
 pico_generate_pio_header(${PROJECT5} ${CMAKE_CURRENT_LIST_DIR}/stream_bits.pio)
 
 target_include_directories(${PROJECT5} PRIVATE
@@ -113,6 +120,7 @@ target_sources(${PROJECT5} PRIVATE
   psu_mode.cc
   nco.cc
   nco_wspr.cc
+  udp_client_server.cc
   )
 
 target_link_libraries(${PROJECT5} PRIVATE
@@ -120,6 +128,7 @@ target_link_libraries(${PROJECT5} PRIVATE
         hardware_pio
         hardware_dma
         hardware_pwm
+        hardware_rtc
         pico_cyw43_arch_lwip_poll
         pico_cyw43_driver
         )

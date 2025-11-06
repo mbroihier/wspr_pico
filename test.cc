@@ -13,10 +13,32 @@
 #include "psu_mode.h"
 #include "nco_wspr.h"
 
+#include "pico/cyw43_arch.h"
+#include "lwip/pbuf.h"
+#include "lwip/udp.h"
+#include "udp_client_server.h"
+
 // example application
 int main() {
   stdio_init_all();
-  disable_power_save();
+  //disable_power_save();
+  if (cyw43_arch_init()) {
+    sleep_ms(5000);
+    printf("failed to intialize wireless\n");
+    while (true) {
+      sleep_ms(1000);
+    }
+  }
+  cyw43_arch_enable_sta_mode();
+  while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+    sleep_ms(5000);
+    printf("failed to connect\n");
+  }
+  printf("Connect to WIFI SSID: %s\n", WIFI_SSID);
+  UDP_Client_Server client;
+  client.setup_udp_find_service(123);
+  client.find_server();
+  printf("found ntp server\n");
 
   int rf_pin = 21;
   double frequency_Hz = 28126000;
