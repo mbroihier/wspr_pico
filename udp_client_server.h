@@ -85,5 +85,7 @@ class UDP_Client_Server {
   void set_remote_ip_addr(ip_addr_t addr) { remote_address = addr; }
   ip_addr_t get_local_ip_addr() { return local_address; }
   void set_local_ip_addr(ip_addr_t addr) { local_address = addr; }
+  uint8_t * get_packetBufferR_addr();
+  uint8_t * get_packetBufferT_addr();
 };
 #endif  // UDP_CLIENT_SERVER_H_

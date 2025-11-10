@@ -20,7 +20,7 @@ void nco_wspr::initialise_waveform_buffer() {
   for (uint8_t symbol_type = 0u; symbol_type < number_of_symbol_types; ++symbol_type) {
     uint32_t sample_number = 0u;
     uint32_t offset = symbol_type * number_of_words_in_a_DMA_block;
-    double normalized_symbol_frequency = normalized_frequency + symbol_type * wspr_delta / system_clock_frequency;
+    double normalized_symbol_frequency = normalized_frequency + (symbol_type * wspr_delta + 1500.0) / system_clock_frequency;
     for (uint32_t word = 0; word < number_of_words_in_a_DMA_block; ++word) {
       uint32_t bit_samples = 0;
       for (uint8_t bit = 0; bit < bits_per_word; ++bit) {
@@ -34,6 +34,14 @@ void nco_wspr::initialise_waveform_buffer() {
       }
       buffer[offset + word] = bit_samples;
     }
+  }
+  printf("bit table\n");
+  for (uint32_t word_index = 0; word_index < number_of_words_in_a_DMA_block;
+       word_index++) {
+    printf("%4.4x %4.4x %4.4x %4.4x\n", buffer[word_index],
+           buffer[word_index + number_of_words_in_a_DMA_block],
+           buffer[word_index + 2*number_of_words_in_a_DMA_block],
+           buffer[word_index + 3*number_of_words_in_a_DMA_block]);
   }
 }
 

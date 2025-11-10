@@ -38,10 +38,41 @@ int main() {
   UDP_Client_Server client;
   client.setup_udp_find_service(123);
   client.find_server();
+  client.setup_udp_client();
   printf("found ntp server\n");
+  printf("packetBufferR address in test: %p\n", client.get_packetBufferR_addr());
+  uint8_t * ptr = client.get_packetBufferR_addr();
+  for (int i = 0; i < 48; i++) {
+    printf("%2.2x ", ptr[i]);
+    if (i % 16 == 15) printf("\n");
+  }
 
+  // get time
+  uint8_t packet[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  client.send_packet(client.get_remote_ip_addr(), 123, 100, packet, 48);
+  // packetBufferR should now have an NTP packet
+  uint64_t sample_clock = time_us_64();
+  uint8_t seconds_buf[4] = {0};
+  for (int i = 0; i < 48; i++) {
+    printf("%2.2x ", ptr[i]);
+    if (i % 16 == 15) printf("\n");
+  }
+  memcpy(seconds_buf, client.get_packetBufferR_addr()+40, sizeof(seconds_buf));
+  uint32_t seconds_since_1900 = seconds_buf[0] << 24 | seconds_buf[1] << 16 | seconds_buf[2] << 8 |
+    seconds_buf[3];
+  uint32_t minute = (seconds_since_1900 / 60) % 60;
+  uint32_t second = seconds_since_1900 % 60;
+  uint32_t first_delay = (60 - second + ((minute & 0x01) == 0) * 60 + 1) * 1000000;  // microseconds until first message
+  printf("time received was: %d, minute: %d, second: %d, delay: %d\n", seconds_since_1900, minute, second,
+         first_delay);
+  uint32_t subsequent_delays = 120 * 1000000;  // every two minutes
+  uint64_t send_message_when_time_is_this = sample_clock + first_delay;
   int rf_pin = 21;
-  double frequency_Hz = 28126000;
+  double offset_Hz = 1400;
+  double tuning_frequency = 28124600;
+  double frequency_Hz = tuning_frequency + offset_Hz;
   sleep_ms(3000);
   // set wspr message to my call sign, location, and power
   uint8_t message[] = {3, 3, 2, 2, 2, 2, 2, 2, 3, 0, 2, 0, 3, 1, 1, 0, 0, 0, 1, 2, 2, 1, 2, 1, 1, 1, 3, 0, 0,
@@ -65,6 +96,10 @@ int main() {
   uint64_t average = 0;
   printf("starting wspr message transfer\n");
   while (1) {
+    while (time_us_64() < send_message_when_time_is_this) {
+      tight_loop_contents();
+    }
+    send_message_when_time_is_this += subsequent_delays;
     uint64_t start = time_us_64();
     rf_nco.output_wspr_message();
     uint64_t stop = time_us_64();

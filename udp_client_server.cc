@@ -186,6 +186,7 @@ void UDP_Client_Server::packet_receive(void * arg, struct udp_pcb *pcb, struct p
   }
   */
   if (p) {
+    printf("packetBufferR address in packet_receive: %p\n", packetBufferR);
     struct pbuf * pbuf_to_free = p;
     int offset = 0;
     ctr->rx_bytes = 0;
@@ -212,8 +213,10 @@ void UDP_Client_Server::packet_receive(void * arg, struct udp_pcb *pcb, struct p
       }
       */
     } while (p != 0 && ctr->rx_bytes < UDP_RX_PACKET_MAX_SIZE);
+    printf("packet_receive got %d bytes\n", ctr->rx_bytes);
     pbuf_free(pbuf_to_free);
   } else {
+    printf("p/pbuff is null\n");
     packetBufferR[0] = 0;
   }
 }
@@ -312,26 +315,52 @@ void UDP_Client_Server::send_packet(ip_addr_t remote_ip_address, uint16_t remote
   //  send_pbuf->payload = buffer;
   send_pbuf->tot_len = buffer_size;
   send_pbuf->len = buffer_size;
-  printf("sending message: %s", send_pbuf->payload);
+  //printf("sending message: %s", send_pbuf->payload);
   cyw43_arch_lwip_begin();
   int err = udp_sendto(client_pcb, send_pbuf, &remote_ip_address, remote_port);
   cyw43_arch_lwip_end();
   cyw43_arch_poll();  // do a poll to send?
-  printf("sent packet to %s port %d, status: %d\n", ip4addr_ntoa(&remote_ip_address), remote_port,
+  printf("send_packet sent data to %s port %d, status: %d\n", ip4addr_ntoa(&remote_ip_address), remote_port,
          err);
   if (reply_timeout) {
     while ((old_packet_count == context_info.rx_cnt) && (reply_timeout-- > 0)) {
+      printf("polling, reply_timeout: %d\n", reply_timeout);
       cyw43_arch_poll();  // see if there is a udp packet
       sleep_ms(10);
     }
     if (old_packet_count != context_info.rx_cnt) {
       old_packet_count = context_info.rx_cnt;
-      printf("%s ", packetBufferR);
-      printf(" from remote IP addr %s, port %d, payload length %d\n",
+      //printf("%s ", packetBufferR);
+      printf(" received reply from remote IP addr %s, port %d, payload should be 48 bytes\n",
              ip4addr_ntoa(&context_info.remote_ip_addr),
-             context_info.remote_port,
-             strlen(packetBufferR));
+             context_info.remote_port);
+    } else {
+      printf("send_packet timed out waiting for a reply\n");
     }
+  } else {
+    printf("send_packet is not waiting\n");
   }
   pbuf_free(send_pbuf);
+}
+//---------------------------------------------------------------------- */
+//
+// get_packetBufferR_addr - get the address used for the received message
+//
+//    Copyright (C) 2025
+//         Mark Broihier
+//
+//---------------------------------------------------------------------- */
+uint8_t * UDP_Client_Server::get_packetBufferR_addr() {
+  return (uint8_t *) packetBufferR;
+}
+//---------------------------------------------------------------------- */
+//
+// get_packetBufferT_addr - get the address used for the transmitted message
+//
+//    Copyright (C) 2025
+//         Mark Broihier
+//
+//---------------------------------------------------------------------- */
+uint8_t * UDP_Client_Server::get_packetBufferT_addr() {
+  return (uint8_t *) packetBufferT;
 }
