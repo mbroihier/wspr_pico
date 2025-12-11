@@ -32,12 +32,15 @@ private:
   dma_channel_config nco_dma_cfg;
   dma_channel_config chain_dma_cfg;
   static const uint32_t bits_per_word = 32u;
-  static const uint32_t words_per_symbol =      2666667u;
-  static const uint32_t DMA_blocks_per_symbol = 266667u;
+  //static const uint32_t words_per_symbol =      2666667u;
+  //static const uint32_t DMA_blocks_per_symbol = 266667u;
+  static const uint32_t words_per_symbol =      2667u;
+  static const uint32_t DMA_blocks_per_symbol = 267u;
   static const uint32_t number_of_symbol_types = 4u;
-  static const uint32_t number_of_words_in_a_DMA_block = 10u;
+  //static const uint32_t number_of_words_in_a_DMA_block = 10u;
+  static const uint32_t number_of_words_in_a_DMA_block = 10000u;
   static const uint64_t system_clock_frequency = 125000000u;
-  double normalized_frequency;
+  double frequency_Hz;
   double wspr_delta;
   uint32_t buffer[number_of_symbol_types * number_of_words_in_a_DMA_block]
       __attribute__((aligned(4)));

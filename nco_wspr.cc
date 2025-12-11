@@ -17,14 +17,21 @@
 void nco_wspr::initialise_waveform_buffer() {
   // Uses floating-point arithmetic and trig functions.
   // Not very fast but doesn't matter because it only runs once.
+  wspr_delta = 12000.0 / 8192.0;
+  uint64_t time_base = time_us_64();
+  uint64_t sample = time_base;
   for (uint8_t symbol_type = 0u; symbol_type < number_of_symbol_types; ++symbol_type) {
-    uint32_t sample_number = 0u;
+    double sample_number = 0.0;
     uint32_t offset = symbol_type * number_of_words_in_a_DMA_block;
-    double normalized_symbol_frequency = normalized_frequency + (symbol_type * wspr_delta + 1500.0) / system_clock_frequency;
+    double symbol_frequency = 2.0 * M_PI * (frequency_Hz + symbol_type * wspr_delta + 1500.0);
+    double normalized_symbol_frequency = symbol_frequency / system_clock_frequency;
+    printf("symbol frequency:            %f\n", symbol_frequency);
+    printf("normalized symbol frequency: %10.10f\n", normalized_symbol_frequency);
     for (uint32_t word = 0; word < number_of_words_in_a_DMA_block; ++word) {
       uint32_t bit_samples = 0;
       for (uint8_t bit = 0; bit < bits_per_word; ++bit) {
-        double sample = sin(2 * M_PI * normalized_symbol_frequency * sample_number++);
+        double sample = sin(normalized_symbol_frequency * sample_number);
+        sample_number += 1.0;
         // could apply dithering here to remove harmonics
         // i.e. sample += (((double)rand()/(double)RANDMAX) - 0.5) * 2.0
         // //random number between -1 and +1
@@ -34,18 +41,65 @@ void nco_wspr::initialise_waveform_buffer() {
       }
       buffer[offset + word] = bit_samples;
     }
+    printf("time delta: %lld\n", time_us_64() - sample);
+    sample = time_us_64();
   }
+  printf("frequency_Hz:                %f\n", frequency_Hz);
+  printf("wspr_delta:                  %f\n", wspr_delta);
+  printf("normalized tuning frequency: %f\n", frequency_Hz / system_clock_frequency);
   printf("bit table\n");
+  //  for (uint32_t word_index = 0; word_index < number_of_words_in_a_DMA_block;
+  //       word_index++) {
+  for (uint32_t word_index = 0; word_index < 10;
+       word_index++) {
+    if (buffer[word_index] == buffer[word_index + number_of_words_in_a_DMA_block] &&
+        buffer[word_index] == buffer[word_index + 2*number_of_words_in_a_DMA_block] &&
+        buffer[word_index] == buffer[word_index + 3* number_of_words_in_a_DMA_block]) { 
+      printf("%4.4x %4.4x %4.4x %4.4x\n", buffer[word_index],
+             buffer[word_index + number_of_words_in_a_DMA_block],
+             buffer[word_index + 2*number_of_words_in_a_DMA_block],
+             buffer[word_index + 3*number_of_words_in_a_DMA_block]);
+    } else {
+      printf("%4.4x %4.4x %4.4x %4.4x*****\n", buffer[word_index],
+             buffer[word_index + number_of_words_in_a_DMA_block],
+             buffer[word_index + 2*number_of_words_in_a_DMA_block],
+             buffer[word_index + 3*number_of_words_in_a_DMA_block]);
+    }
+  }
+  printf("Looking for repeating of pattern\n");
   for (uint32_t word_index = 0; word_index < number_of_words_in_a_DMA_block;
        word_index++) {
-    printf("%4.4x %4.4x %4.4x %4.4x\n", buffer[word_index],
-           buffer[word_index + number_of_words_in_a_DMA_block],
-           buffer[word_index + 2*number_of_words_in_a_DMA_block],
-           buffer[word_index + 3*number_of_words_in_a_DMA_block]);
+    if (buffer[0] == buffer[word_index]) {
+      printf("symbol 0 repeats at %d\n", word_index);
+    }
+    if (buffer[number_of_words_in_a_DMA_block] == buffer[word_index+number_of_words_in_a_DMA_block]) {
+      printf("symbol 1 repeats at %d\n", word_index);
+    }
+    if (buffer[2*number_of_words_in_a_DMA_block] == buffer[word_index+2*number_of_words_in_a_DMA_block]) {
+      printf("symbol 2 repeats at %d\n", word_index);
+    }
+    if (buffer[3*number_of_words_in_a_DMA_block] == buffer[word_index+3*number_of_words_in_a_DMA_block]) {
+      printf("symbol 3 repeats at %d\n", word_index);
+    }
+    if (buffer[1] == buffer[word_index]) {
+      printf("symbol 0/w1 repeats at %d\n", word_index);
+    }
+    if (buffer[number_of_words_in_a_DMA_block+1] == buffer[word_index+number_of_words_in_a_DMA_block]) {
+      printf("symbol 1/w1 repeats at %d\n", word_index);
+    }
+    if (buffer[2*number_of_words_in_a_DMA_block+1] == buffer[word_index+2*number_of_words_in_a_DMA_block]) {
+      printf("symbol 2/w1 repeats at %d\n", word_index);
+    }
+    if (buffer[3*number_of_words_in_a_DMA_block+1] == buffer[word_index+3*number_of_words_in_a_DMA_block]) {
+      printf("symbol 3/w1 repeats at %d\n", word_index);
+    }
   }
 }
 
 nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message) {
+  gpio_init(rf_pin);
+  gpio_set_dir(rf_pin, GPIO_OUT);
+  gpio_set_drive_strength(rf_pin, GPIO_DRIVE_STRENGTH_12MA);
   printf("incoming message\n");
   for (uint8_t i = 0; i < number_of_symbols_in_a_message; i++) {
     printf("%d ", message[i]);
@@ -63,9 +117,8 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message)
     printf("%d ", symbols[i]);
   }
   printf("\n");
-  normalized_frequency = frequency_Hz/system_clock_frequency;
-  wspr_delta = 1.46;  // frequency delta between wspr symbols
   m_rf_pin = rf_pin;
+  this->frequency_Hz = frequency_Hz;
 
   initialise_waveform_buffer();
 
@@ -88,7 +141,7 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message)
   dma_channel_configure(nco_dma, &nco_dma_cfg,
                         &pio->txf[sm],
                         NULL,
-                        10,  // 10 32 bit transfers
+                        10000,  // 10 32 bit transfers
                         false // don't start yet
                         );
   printf("symbols after DMA configuration\n");
@@ -123,12 +176,21 @@ void nco_wspr::output_wspr_message() {
         //printf("pio stall, potential lost samples debug: %x\n", pio->fdebug);
         pio->fdebug = 0xffffffff; // clear all
       }
-      dma_channel_configure(nco_dma, &nco_dma_cfg,
-                            &pio->txf[sm],
-                            address,
-                            10,  // 10 32 bit transfers
-                            true // start
-                            );
+      if (symbol_duration != (DMA_blocks_per_symbol - 1)) {  // check for last transfer
+        dma_channel_configure(nco_dma, &nco_dma_cfg,
+                              &pio->txf[sm],
+                              address,
+                              10000,  // 10,000 word, 32 bit transfers
+                              true // start
+                              );
+      } else {
+        dma_channel_configure(nco_dma, &nco_dma_cfg,
+                              &pio->txf[sm],
+                              address,
+                              6667,  // part of a block 32 bit transfers
+                              true // start
+                              );
+      }        
     }
     printf("m[%d]:%d\n", symbol, symbols[symbol]);
   }
