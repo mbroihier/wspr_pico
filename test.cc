@@ -2,6 +2,7 @@
 #define __STDC_FORMAT_MACROS 1
 #include "pico/stdlib.h"
 #include <cmath>
+#include <malloc.h>
 #include <stdio.h>
 #include <sys/types.h>  // needed for PRIu64
 #include <cinttypes>
@@ -18,10 +19,29 @@
 #include "lwip/udp.h"
 #include "udp_client_server.h"
 
+// Source - https://stackoverflow.com/q/79222575
+// Posted by Richard
+// Retrieved 2026-03-05, License - CC BY-SA 4.0
+
+uint32_t getTotalHeap()
+{
+    extern char __StackLimit, __bss_end__;
+    return &__StackLimit - &__bss_end__;
+}
+
+uint32_t getFreeHeap()
+{
+    struct mallinfo m = mallinfo();
+    return getTotalHeap() - m.uordblks;
+}
+
 // example application
 int main() {
   stdio_init_all();
   //disable_power_save();
+  sleep_ms(5000);
+  printf("Total heap: %u\n", getTotalHeap());
+  printf("Free heap: %u\n", getFreeHeap());
   if (cyw43_arch_init()) {
     sleep_ms(5000);
     printf("failed to intialize wireless\n");
@@ -36,6 +56,8 @@ int main() {
   }
   printf("Connect to WIFI SSID: %s\n", WIFI_SSID);
   UDP_Client_Server client;
+  printf("Total heap: %u\n", getTotalHeap());
+  printf("Free heap: %u\n", getFreeHeap());
   client.setup_udp_find_service(123);
   client.find_server();
   client.setup_udp_client();
@@ -113,7 +135,12 @@ int main() {
     printf("%d ", message[i]);
   }
   printf("\n");
-  nco_wspr rf_nco(rf_pin, frequency_Hz, message);
+  printf("Free heap: %u\n", getFreeHeap());
+  nco_wspr * rf_nco;
+  double transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
+  //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
+  rf_nco = new nco_wspr(rf_pin, message, 5);
+  printf("Free heap after rf_nco created: %u\n", getFreeHeap());
   
   FreqCountRP2.beginTimer(11, 1000);  // pin 11, 1 second
   sleep_ms(2000);
@@ -132,8 +159,9 @@ int main() {
       //sleep_ms(1000);
     }
     send_message_when_time_is_this += subsequent_delays;
+    //printf("frequency offset from center: %lf Hz\n", transmission_offset);
     uint64_t start = time_us_64();
-    rf_nco.output_wspr_message();
+    rf_nco->output_wspr_message();
     uint64_t stop = time_us_64();
     if (FreqCountRP2.available()) {
       uint32_t measured_freq = FreqCountRP2.read();
@@ -146,6 +174,12 @@ int main() {
       printf("average freq: %" PRIu64 " Hz\n", average);
       double delta_time_seconds = (stop - start) / 1000000.0;
       printf("duration of wspr transmission: %lf\n", delta_time_seconds);
+      //transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
+      //delete rf_nco;
+      //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
+      if (time_us_64() >= send_message_when_time_is_this) {
+        send_message_when_time_is_this += subsequent_delays;
+      }
     }
   }
 }

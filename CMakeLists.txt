@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 set(PICO_BOARD "pico_w")
+set(CMAKE_EXE_LINKER_FLAGS "-Wl,--print-memory-usage")
 include("$ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 set(PROJECT "hello_pio")
 project(${PROJECT} C CXX ASM)

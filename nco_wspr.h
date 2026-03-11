@@ -32,12 +32,9 @@ private:
   dma_channel_config nco_dma_cfg;
   dma_channel_config chain_dma_cfg;
   static const uint32_t bits_per_word = 32u;
-  //static const uint32_t words_per_symbol =      2666667u;
-  //static const uint32_t DMA_blocks_per_symbol = 266667u;
   static const uint32_t words_per_symbol =      2667u;
   static const uint32_t DMA_blocks_per_symbol = 267u;
   static const uint32_t number_of_symbol_types = 4u;
-  //static const uint32_t number_of_words_in_a_DMA_block = 10u;
   static const uint32_t number_of_words_in_a_DMA_block = 10000u;
   static const uint64_t system_clock_frequency = 125000000u;
   double frequency_Hz;
@@ -45,10 +42,12 @@ private:
   uint32_t buffer[number_of_symbol_types * number_of_words_in_a_DMA_block]
       __attribute__((aligned(4)));
   uint8_t symbols[number_of_symbols_in_a_message];
-  void initialise_waveform_buffer();
+  void initialise_waveform_buffer(double delta, double transmission_offset);
+  bool use_table = false;
 
 public:
-  nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message);
+  nco_wspr(const uint8_t rf_pin, uint8_t * message, uint32_t buffer_select);
+  nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message, double transmission_offset, double delta=0.0);
   ~nco_wspr();
   void output_wspr_message();
 };
