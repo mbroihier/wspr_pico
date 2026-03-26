@@ -161,8 +161,10 @@ int main() {
     send_message_when_time_is_this += subsequent_delays;
     //printf("frequency offset from center: %lf Hz\n", transmission_offset);
     uint64_t start = time_us_64();
-    rf_nco->output_wspr_message();
+    rf_nco->output_wspr_message(false);
     uint64_t stop = time_us_64();
+    double delta_time_seconds = (stop - start) / 1000000.0;
+    printf("time in output_wspr_message: %lf\n", delta_time_seconds);
     if (FreqCountRP2.available()) {
       uint32_t measured_freq = FreqCountRP2.read();
       sum += measured_freq;
@@ -172,14 +174,12 @@ int main() {
       }
       printf("measured freq: %d Hz\n", measured_freq);
       printf("average freq: %" PRIu64 " Hz\n", average);
-      double delta_time_seconds = (stop - start) / 1000000.0;
-      printf("duration of wspr transmission: %lf\n", delta_time_seconds);
-      //transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
-      //delete rf_nco;
-      //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
-      if (time_us_64() >= send_message_when_time_is_this) {
-        send_message_when_time_is_this += subsequent_delays;
-      }
+    }
+    //transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
+    //delete rf_nco;
+    //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
+    if (time_us_64() >= send_message_when_time_is_this) {
+      send_message_when_time_is_this += subsequent_delays;
     }
   }
 }
