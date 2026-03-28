@@ -97,7 +97,7 @@ pico_add_extra_outputs(${PROJECT4})
 pico_enable_stdio_usb(${PROJECT4} 0)
 pico_enable_stdio_uart(${PROJECT4} 1)
 
-set(PROJECT5 "test")
+set(PROJECT5 "wspr_transmitter")
 project(${PROJECT5} C CXX ASM)
 
 add_executable(${PROJECT5})
