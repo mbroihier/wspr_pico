@@ -30,6 +30,7 @@ public:
   static uint32_t symbol_dma, program_symbol_dma, program_control0, first_time_symbol_dma;  // DMA channel numbers
   static uint32_t symbol_dma_count, program_symbol_dma_count, program_control0_count, first_time_symbol_dma_count;
 private:
+  bool debug = false;
   uint8_t m_rf_pin;
   PIO pio = pio0;
   uint32_t nco_dma, chain_dma, sm;

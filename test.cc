@@ -129,17 +129,11 @@ int main() {
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 };
   */
 
-  printf("message before before object rf_nco is created\n");
-  
-  for (uint8_t i = 0; i < nco_wspr::number_of_symbols_in_a_message; i++) {
-    printf("%d ", message[i]);
-  }
-  printf("\n");
   printf("Free heap: %u\n", getFreeHeap());
   nco_wspr * rf_nco;
   double transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
   //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
-  rf_nco = new nco_wspr(rf_pin, message, 5);
+  rf_nco = new nco_wspr(rf_pin, message, 1);
   printf("Free heap after rf_nco created: %u\n", getFreeHeap());
   
   FreqCountRP2.beginTimer(11, 1000);  // pin 11, 1 second
@@ -152,14 +146,12 @@ int main() {
   }
   // disable wifi
   cyw43_arch_deinit();
-  printf("starting wspr message transfer\n");
+  printf("entering wspr message transfer loop\n");
   while (1) {
     while (time_us_64() < send_message_when_time_is_this) {
       tight_loop_contents();
-      //sleep_ms(1000);
     }
     send_message_when_time_is_this += subsequent_delays;
-    //printf("frequency offset from center: %lf Hz\n", transmission_offset);
     uint64_t start = time_us_64();
     rf_nco->output_wspr_message(false);
     uint64_t stop = time_us_64();
@@ -178,7 +170,7 @@ int main() {
     //transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
     //delete rf_nco;
     //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
-    if (time_us_64() >= send_message_when_time_is_this) {
+    while (time_us_64() >= send_message_when_time_is_this) {
       send_message_when_time_is_this += subsequent_delays;
     }
   }

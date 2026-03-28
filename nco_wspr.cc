@@ -35,7 +35,7 @@ void nco_wspr::dma_handler() {
     dma_hw->ints0 = 1u << program_control0;
     program_control0_count++;
     // when this happens, trigger first_time_symbol_dma
-    if(first_time_symbol_dma_count < number_of_symbols_in_a_message) { // ?
+    if(first_time_symbol_dma_count < number_of_symbols_in_a_message) {
       dma_start_channel_mask(1u << first_time_symbol_dma);
     }
   }
@@ -61,12 +61,14 @@ void nco_wspr::setup_control_blocks() {
     *buffer_ptr++ = 0;
   }
   buffer_ptr = ctr0_block;
-  printf("ctr0_block\n");
-  for (uint32_t symbol = 0u; symbol < number_of_symbol_types; symbol++) {
-    for (uint32_t i = 0; i < DMA_blocks_per_symbol; i++) {
+  if (debug) {
+    printf("ctr0_block\n");
+    for (uint32_t symbol = 0u; symbol < number_of_symbol_types; symbol++) {
+      for (uint32_t i = 0; i < DMA_blocks_per_symbol; i++) {
+        printf("%4.4x %4.4x\n", *buffer_ptr++, *buffer_ptr++);
+      }
       printf("%4.4x %4.4x\n", *buffer_ptr++, *buffer_ptr++);
     }
-    printf("%4.4x %4.4x\n", *buffer_ptr++, *buffer_ptr++);
   }
   // Control block 1 contains pointers to control block 0 in the order of the symbols
   // necessary to build the WSPR message.  When using this table, the values stored in the table
@@ -79,12 +81,14 @@ void nco_wspr::setup_control_blocks() {
   }
   *buffer_ptr++ = 0;
   buffer_ptr = ctr1_block;
-  printf("ctr1_block\n");
-  for (uint32_t symbol_index = 0u; symbol_index < number_of_symbols_in_a_message; symbol_index++) {
-    uint32_t * contents = (uint32_t *)*buffer_ptr;
-    printf("symbol index: %3d: %4.4x %4.4x %4.4x\n", symbol_index, *buffer_ptr++, *contents++, *contents);
+  if (debug) {
+    printf("ctr1_block\n");
+    for (uint32_t symbol_index = 0u; symbol_index < number_of_symbols_in_a_message; symbol_index++) {
+      uint32_t * contents = (uint32_t *)*buffer_ptr;
+      printf("symbol index: %3d: %4.4x %4.4x %4.4x\n", symbol_index, *buffer_ptr++, *contents++, *contents);
+    }
+    printf("%4.4x\n", *buffer_ptr++);
   }
-  printf("%4.4x\n", *buffer_ptr++);
   // Control block 2 contains information for setting up the first DMA transfer for a symbol
   buffer_ptr = ctr2_block;
   for (uint32_t symbol_index = 0; symbol_index < number_of_symbols_in_a_message; symbol_index++) {
@@ -96,11 +100,13 @@ void nco_wspr::setup_control_blocks() {
   *buffer_ptr++ = 0;
   *buffer_ptr++ = 0;
   buffer_ptr = ctr2_block;
-  printf("ctr2_block\n");
-  for (uint32_t symbol_index = 0u; symbol_index < number_of_symbols_in_a_message; symbol_index++) {
-    printf("symbol index: %3d: %4.4x %4.4x\n", symbol_index, *buffer_ptr++, *buffer_ptr++);
+  if (debug) {
+    printf("ctr2_block\n");
+    for (uint32_t symbol_index = 0u; symbol_index < number_of_symbols_in_a_message; symbol_index++) {
+      printf("symbol index: %3d: %4.4x %4.4x\n", symbol_index, *buffer_ptr++, *buffer_ptr++);
+    }
+    printf("%4.4x %4.4x\n", *buffer_ptr++, *buffer_ptr++);
   }
-  printf("%4.4x %4.4x\n", *buffer_ptr++, *buffer_ptr++);
 }
 
 void nco_wspr::initialise_waveform_buffer(double delta, double transmission_offset) {
@@ -209,7 +215,7 @@ void nco_wspr::setup_dma_channels() {
   channel_config_set_irq_quiet(&symbol_dma_cfg, true);
   program_symbol_dma_count = 0;
   dma_channel_set_irq0_enabled(program_symbol_dma, true);
-  channel_config_set_irq_quiet(&program_symbol_dma_cfg, true);  //?
+  //channel_config_set_irq_quiet(&program_symbol_dma_cfg, true);
 
   // now we need DMA transfers to setup for the next symbol by programming program_symbol_dma and symbol_dma
   program_control0_count = 0;
@@ -219,15 +225,12 @@ void nco_wspr::setup_dma_channels() {
   channel_config_set_transfer_data_size(&program_control0_cfg, DMA_SIZE_32);
   channel_config_set_read_increment(&program_control0_cfg, true);
   channel_config_set_write_increment(&program_control0_cfg, false);
-  //channel_config_set_dreq(&program_control0_cfg, DREQ_FORCE); // ?  this should be the default
   dma_channel_configure(program_control0, &program_control0_cfg,
                         &dma_hw->ch[program_symbol_dma].read_addr, // write to program_symbol_dma read address
                         address, // next tone to send
                         1,       // 1 32 bit transfers
                         false // don't start yet
                         );
-  //channel_config_set_chain_to(&program_symbol_dma_cfg, program_control0);  // ? when entire symbol sent,
-                                                                           // reprogram blocks for next
   dma_channel_set_irq0_enabled(program_control0, true);
   // now we need to reprogram symbol_dma and retrigger it to start the next tone
   first_time_symbol_dma_count = 0;
@@ -246,8 +249,6 @@ void nco_wspr::setup_dma_channels() {
                         );
   
   dma_channel_set_irq0_enabled(first_time_symbol_dma, true);
-  //channel_config_set_chain_to(&program_control0_cfg, first_time_symbol_dma);
-  channel_config_set_irq_quiet(&program_control0_cfg, false); //?
 }
 nco_wspr::nco_wspr(const uint8_t rf_pin, uint8_t * message, uint32_t buffer_select) {
 
@@ -284,11 +285,6 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, uint8_t * message, uint32_t buffer_sele
                         10000,  // 10 32 bit transfers
                         false // don't start yet
                         );
-  printf("symbols after DMA configuration\n");
-  for (uint8_t i = 0; i < nco_wspr::number_of_symbols_in_a_message; i++) {
-    printf("%d ", symbols[i]);
-  }
-  printf("\n");
   // initialize RAM buffer using a FLASH entry
   uint32_t * buffer_ptr = buffer;
   const uint32_t * source_ptr = &bit_pattern_table[buffer_select *  number_of_words_in_a_DMA_block *
@@ -307,18 +303,6 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message,
   printf("incoming message\n");
   for (uint8_t i = 0; i < number_of_symbols_in_a_message; i++) {
     printf("%d ", message[i]);
-  }
-  printf("\n");
-  printf("symbols before copy of message\n");
-  for (uint8_t i = 0; i < number_of_symbols_in_a_message; i++) {
-    printf("%d ", symbols[i]);
-  }
-  for (int i = 0; i < number_of_symbols_in_a_message; i++) {
-    symbols[i] = message[i];
-  }
-  printf("symbols after copy of message\n");
-  for (uint8_t i = 0; i < number_of_symbols_in_a_message; i++) {
-    printf("%d ", symbols[i]);
   }
   printf("\n");
   m_rf_pin = rf_pin;
@@ -348,11 +332,6 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message,
                         10000,  // 10 32 bit transfers
                         false // don't start yet
                         );
-  printf("symbols after DMA configuration\n");
-  for (uint8_t i = 0; i < nco_wspr::number_of_symbols_in_a_message; i++) {
-    printf("%d ", symbols[i]);
-  }
-  printf("\n");
 }
 
 void nco_wspr::tear_down_dma() {
