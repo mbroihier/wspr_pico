@@ -120,24 +120,25 @@ void nco_wspr::initialise_waveform_buffer(double delta, double transmission_offs
     wspr_delta = delta;
   }
   double phase_shift = 0.0;
-  float delta_scale[] = {-1.5, -0.5, 0.5, 1.5};
+  const double TWO_PI = 2.0 * M_PI;
+  const double normalized_delta[] = {-1.5 * TWO_PI * wspr_delta / system_clock_frequency,
+                                     -0.5 * TWO_PI * wspr_delta / system_clock_frequency,
+                                     0.5 * TWO_PI * wspr_delta / system_clock_frequency,
+                                     1.5 * TWO_PI * wspr_delta / system_clock_frequency};
+  const double center_frequency = TWO_PI * (frequency_Hz + transmission_offset +1500.0);
+  const double normalized_center_frequency = center_frequency / system_clock_frequency;
+  double integral_sum = 0.0;
   for (uint8_t symbol_type = 0u; symbol_type < number_of_symbol_types; ++symbol_type) {
-    double sample_number = 0.0;
     uint32_t offset = symbol_type * number_of_words_in_a_DMA_block;
-    double symbol_frequency = 2.0 * M_PI * (frequency_Hz + delta_scale[symbol_type] * wspr_delta +
-                                            + transmission_offset +1500.0);
-    double normalized_symbol_frequency = symbol_frequency / system_clock_frequency;
-    printf("symbol frequency:            %f\n", symbol_frequency);
-    printf("normalized symbol frequency: %10.10f\n", normalized_symbol_frequency);
     phase_shift += 1.4;
+    integral_sum = 0.0;
     for (uint32_t word = 0; word < number_of_words_in_a_DMA_block; ++word) {
       uint32_t bit_samples = 0;
       for (uint8_t bit = 0; bit < bits_per_word; ++bit) {
-        double sample = sin(normalized_symbol_frequency * sample_number + phase_shift);
-        sample_number += 1.0;
-        // could apply dithering here to remove harmonics
-        // i.e. sample += (((double)rand()/(double)RANDMAX) - 0.5) * 2.0
-        // //random number between -1 and +1
+        double sample = sin(integral_sum + phase_shift);
+        integral_sum += normalized_delta[symbol_type] + normalized_center_frequency;
+        while (integral_sum > TWO_PI) integral_sum -= TWO_PI;
+        while (integral_sum < - TWO_PI) integral_sum += TWO_PI;
         if (sample > 0) {
           bit_samples |= (1 << bit);
         }
@@ -435,6 +436,6 @@ void nco_wspr::output_wspr_message(bool default_sending_mode) {
       pio->fdebug = 0xffffffff; // clear all
     }
     tear_down_dma();
-    setup_dma_channels();
+    //setup_dma_channels();
   }
 }

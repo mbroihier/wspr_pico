@@ -87,7 +87,7 @@ int main() {
   uint32_t minute = (seconds_since_1900 / 60) % 60;
   uint32_t second = seconds_since_1900 % 60;
   uint32_t first_delay = (60 - second + ((minute & 0x01) == 0) * 60 + 1) * 1000000;  // microseconds until first message
-  printf("time received was: %d, minute: %d, second: %d, delay: %d\n", seconds_since_1900, minute, second,
+  printf("time received was: %u, minute: %d, second: %d, delay: %d\n", seconds_since_1900, minute, second,
          first_delay);
   uint32_t subsequent_delays = 120 * 1000000;  // every two minutes
   uint64_t send_message_when_time_is_this = sample_clock + first_delay;
@@ -133,7 +133,8 @@ int main() {
   nco_wspr * rf_nco;
   double transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
   //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
-  rf_nco = new nco_wspr(rf_pin, message, 1);
+  int freq_index = 0;
+  rf_nco = new nco_wspr(rf_pin, message, freq_index);
   printf("Free heap after rf_nco created: %u\n", getFreeHeap());
   
   FreqCountRP2.beginTimer(11, 1000);  // pin 11, 1 second
@@ -167,9 +168,9 @@ int main() {
       printf("measured freq: %d Hz\n", measured_freq);
       printf("average freq: %" PRIu64 " Hz\n", average);
     }
-    //transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
-    //delete rf_nco;
-    //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
+    delete rf_nco;
+    freq_index = ++freq_index % 10;
+    rf_nco = new nco_wspr(rf_pin, message, freq_index);
     while (time_us_64() >= send_message_when_time_is_this) {
       send_message_when_time_is_this += subsequent_delays;
     }
