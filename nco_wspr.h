@@ -26,23 +26,26 @@
 
 class nco_wspr {
 public:
+  static const uint32_t number_of_symbol_types = 4u;
   static const uint32_t number_of_symbols_in_a_message = 162u;
   static uint32_t symbol_dma, program_symbol_dma, program_control0, first_time_symbol_dma;  // DMA channel numbers
   static uint32_t symbol_dma_count, program_symbol_dma_count, program_control0_count, first_time_symbol_dma_count;
+  static int32_t blocks[number_of_symbol_types], last[number_of_symbol_types], last_last[number_of_symbol_types];
+  static uint32_t * ctr0_starts[number_of_symbol_types];
+
 private:
-  bool debug = false;
+  bool debug = true;
   uint8_t m_rf_pin;
   PIO pio = pio0;
   uint32_t nco_dma, chain_dma, sm;
   dma_channel_config nco_dma_cfg;
   dma_channel_config chain_dma_cfg;
   static const uint32_t bits_per_word = 32u;
-  static const uint32_t words_per_symbol =      2667u;
-  static const uint32_t DMA_blocks_per_symbol = 267u;
-  static const uint32_t number_of_symbol_types = 4u;
+  static const uint32_t DMA_blocks_per_symbol = 267u + 30u; //add 30 extra blocks
+  static const uint32_t words_per_symbol = 266*10000u + 6667u; //words per symbol - about .68 seconds
   static const uint32_t number_of_words_in_a_DMA_block = 10000u;
   static const uint64_t system_clock_frequency = 125000000u;
-    
+
   double frequency_Hz;
   double wspr_delta;
   uint32_t buffer[number_of_symbol_types * number_of_words_in_a_DMA_block]
