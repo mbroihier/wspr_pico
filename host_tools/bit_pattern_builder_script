@@ -1,0 +1,11 @@
+rm bit_pattern_file.txt
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124546.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124547.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124548.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124549.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124550.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124551.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124552.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124553.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124554.0 1.46484375 >/dev/null
+../build/host_tool_target-prefix/src/host_tool_target-build/build_bit_patterns 28124555.0 1.46484375 >/dev/null

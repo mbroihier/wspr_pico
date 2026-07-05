@@ -137,3 +137,16 @@ target_link_libraries(${PROJECT5} PRIVATE
 pico_add_extra_outputs(${PROJECT5})
 pico_enable_stdio_usb(${PROJECT5} 1)
 pico_enable_stdio_uart(${PROJECT5} 0)
+# host compiles for host tools
+include(ExternalProject)
+set(HOST_PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_tools")
+ExternalProject_Add(host_tool_target
+        SOURCE_DIR "${HOST_PROJECT_DIR}"
+        # INCLUDE_DIR "${HOST_PROJECT_DIR}"
+        CMAKE_ARGS
+                -DCMAKE_TOOLCHAIN_FILE=
+                -DCMAKE_BUILD_TYPE=Release
+        CMAKE_CACHE_ARGS
+                -DCMAKE_RUNTIME_OUTPUT_DIRCTORY:PATH=${CMAKE_BINARY_DIR}
+        INSTALL_COMMAND ""
+        )
