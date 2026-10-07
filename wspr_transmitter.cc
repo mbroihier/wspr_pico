@@ -43,7 +43,17 @@ uint32_t getFreeHeap() {
     struct mallinfo m = mallinfo();
     return getTotalHeap() - m.uordblks;
 }
-
+queue_t UDP_Client_Server::receiveMessageQueue;
+queue_t UDP_Client_Server::receiveContextQueue;
+char UDP_Client_Server::packetBufferT[UDP_TX_PACKET_MAX_SIZE + 1];
+char UDP_Client_Server::packetBufferR[UDP_RX_PACKET_MAX_SIZE + 1];
+class UDP_Client : public UDP_Client_Server {
+public:
+  void background(uint64_t &t) {
+  }
+  void run() {
+  }
+};
 // example application
 int main() {
   stdio_init_all();
@@ -64,15 +74,15 @@ int main() {
     printf("failed to connect\n");
   }
   printf("Connect to WIFI SSID: %s\n", WIFI_SSID);
-  UDP_Client_Server client;
+  UDP_Client client;
   printf("Total heap: %u\n", getTotalHeap());
   printf("Free heap: %u\n", getFreeHeap());
   client.setup_udp_find_service(123);
   client.find_server();
   client.setup_udp_client();
   printf("found ntp server\n");
-  printf("packetBufferR address in test: %p\n", client.get_packetBufferR_addr());
-  uint8_t * ptr = client.get_packetBufferR_addr();
+  printf("packetBufferR address in test: %p\n", UDP_Client::packetBufferR);
+  uint8_t * ptr = reinterpret_cast<uint8_t *>(UDP_Client::packetBufferR);
   for (int i = 0; i < 48; i++) {
     printf("%2.2x ", ptr[i]);
     if (i % 16 == 15) printf("\n");
@@ -90,7 +100,7 @@ int main() {
     printf("%2.2x ", ptr[i]);
     if (i % 16 == 15) printf("\n");
   }
-  memcpy(seconds_buf, client.get_packetBufferR_addr()+40, sizeof(seconds_buf));
+  memcpy(seconds_buf, UDP_Client::packetBufferR+40, sizeof(seconds_buf));
   uint32_t seconds_since_1900 = seconds_buf[0] << 24 | seconds_buf[1] << 16 | seconds_buf[2] << 8 |
     seconds_buf[3];
   uint32_t minute = (seconds_since_1900 / 60) % 60;

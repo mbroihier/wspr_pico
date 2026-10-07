@@ -122,6 +122,8 @@ target_sources(${PROJECT5} PRIVATE
   nco.cc
   nco_wspr.cc
   udp_client_server.cc
+  dnsserver.c
+  dhcpserver.c
   )
 
 target_link_libraries(${PROJECT5} PRIVATE
