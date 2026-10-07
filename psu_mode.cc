@@ -1,3 +1,13 @@
+/* ---------------------------------------------------------------------- */
+/*
+ *      psu_mode -- power saver mode control
+ *
+ *      Copyright (C) 2026
+ *          Mark Broihier
+ *
+ */
+/* ---------------------------------------------------------------------- */
+// Adopted from pico examples
 #include "psu_mode.h"
 #include "pico/stdlib.h"
 

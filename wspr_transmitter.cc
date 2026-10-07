@@ -1,11 +1,22 @@
+/* ---------------------------------------------------------------------- */
+/*
+ *      wspr_transmitter -- main program for Pico based WSPR transmitter
+ *
+ *      Copyright (C) 2026
+ *          Mark Broihier
+ *
+ */
+/* ---------------------------------------------------------------------- */
 
 #define __STDC_FORMAT_MACROS 1
-#include "pico/stdlib.h"
-#include <cmath>
+#include <sys/types.h>  // needed for PRIu64
 #include <malloc.h>
 #include <stdio.h>
-#include <sys/types.h>  // needed for PRIu64
+
+#include <cmath>
 #include <cinttypes>
+
+#include "pico/stdlib.h"
 
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
@@ -23,14 +34,12 @@
 // Posted by Richard
 // Retrieved 2026-03-05, License - CC BY-SA 4.0
 
-uint32_t getTotalHeap()
-{
+uint32_t getTotalHeap() {
     extern char __StackLimit, __bss_end__;
     return &__StackLimit - &__bss_end__;
 }
 
-uint32_t getFreeHeap()
-{
+uint32_t getFreeHeap() {
     struct mallinfo m = mallinfo();
     return getTotalHeap() - m.uordblks;
 }
@@ -38,7 +47,7 @@ uint32_t getFreeHeap()
 // example application
 int main() {
   stdio_init_all();
-  //disable_power_save();
+  // disable_power_save();
   sleep_ms(5000);
   printf("Total heap: %u\n", getTotalHeap());
   printf("Free heap: %u\n", getFreeHeap());
@@ -70,9 +79,9 @@ int main() {
   }
 
   // get time
-  uint8_t packet[] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  uint8_t packet[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   client.send_packet(client.get_remote_ip_addr(), 123, 100, packet, 48);
   // packetBufferR should now have an NTP packet
   uint64_t sample_clock = time_us_64();
@@ -97,7 +106,7 @@ int main() {
   double frequency_Hz = tuning_frequency + offset_Hz;
   sleep_ms(3000);
   // set wspr message to my call sign, location, and power
-  
+
   uint8_t message[] = {3, 3, 2, 2, 2, 2, 2, 2, 3, 0, 2, 0, 3, 1, 1, 0, 0, 0, 1, 2, 2, 1, 2, 1, 1, 1, 3, 0, 0,
     2, 2, 2, 2, 2, 1, 0, 2, 3, 0, 1, 0, 0, 0, 0, 0, 2, 1, 0, 3, 3, 2, 0, 1, 3, 2, 3, 2, 2, 2, 3, 3, 0, 3, 0,
     0, 2, 2, 3, 1, 0, 1, 2, 3, 0, 3, 2, 3, 2, 0, 1, 0, 0, 1, 2, 1, 1, 2, 0, 0, 3, 3, 0, 1, 2, 1, 2, 2, 2, 1,
@@ -131,12 +140,12 @@ int main() {
 
   printf("Free heap: %u\n", getFreeHeap());
   nco_wspr * rf_nco;
-  double transmission_offset = ((double)rand()/(double)RAND_MAX - 0.5) * 200.0;
-  //rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
+  double transmission_offset = (static_cast<double>(rand())/static_cast<double>(RAND_MAX) - 0.5) * 200.0;
+  // rf_nco = new nco_wspr(rf_pin, frequency_Hz, message, transmission_offset);
   int freq_index = 0;
   rf_nco = new nco_wspr(rf_pin, message, freq_index);
   printf("Free heap after rf_nco created: %u\n", getFreeHeap());
-  
+
   FreqCountRP2.beginTimer(11, 1000);  // pin 11, 1 second
   sleep_ms(2000);
   uint64_t sum = 0;

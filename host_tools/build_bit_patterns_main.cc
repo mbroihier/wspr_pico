@@ -1,5 +1,18 @@
+/* ---------------------------------------------------------------------- */
+/*
+ *      build_bit_patterns_main -- build the bit patterns to produce the
+ *                                 WSPR frequencies needed - this runs on
+ *                                 the compiler host machine to aid in
+ *                                 building the Pico target code
+ *
+ *      Copyright (C) 2026
+ *          Mark Broihier
+ *
+ */
+
+/* ---------------------------------------------------------------------- */
 #include "build_bit_patterns.h"
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   double freq, offset, delta;
   offset = 0.0;
   if (argc == 1) {
@@ -21,5 +34,3 @@ int main (int argc, char *argv[]) {
   }
   fclose(bit_pattern_file);
 }
-  
-    

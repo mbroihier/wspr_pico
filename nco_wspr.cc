@@ -1,4 +1,14 @@
-// Based on
+/* ---------------------------------------------------------------------- */
+/*
+ *      nco_wspr -- numeric controlled oscillator
+ *
+ *      Copyright (C) 2026
+ *          Mark Broihier
+ *
+ */
+
+/* ---------------------------------------------------------------------- */
+// Adopted from
 //  _  ___  _   _____ _     _
 // / |/ _ \/ | |_   _| |__ (_)_ __   __ _ ___
 // | | | | | |   | | | '_ \| | '_ \ / _` / __|
@@ -39,7 +49,7 @@ void nco_wspr::dma_handler() {
     dma_hw->ints0 = 1u << program_control0;
     program_control0_count++;
     // when this happens, trigger first_time_symbol_dma
-    if(first_time_symbol_dma_count < number_of_symbols_in_a_message) {
+    if (first_time_symbol_dma_count < number_of_symbols_in_a_message) {
       dma_start_channel_mask(1u << first_time_symbol_dma);
     }
   }
@@ -107,7 +117,7 @@ void nco_wspr::setup_control_blocks() {
   if (debug) {
     printf("ctr1_block\n");
     for (uint32_t symbol_index = 0u; symbol_index < number_of_symbols_in_a_message; symbol_index++) {
-      uint32_t * contents = (uint32_t *)*buffer_ptr;
+      uint32_t * contents = reinterpret_cast<uint32_t *>(*buffer_ptr);
       printf("symbol index: %3d: %4.4x %4.4x %4.4x\n", symbol_index, *buffer_ptr++, *contents++, *contents);
     }
     printf("%4.4x\n", *buffer_ptr++);
@@ -171,7 +181,6 @@ void nco_wspr::initialise_waveform_buffer(double delta, double transmission_offs
     printf("time delta: %lld\n", time_us_64() - sample);
     sample = time_us_64();
   }
-  
   printf("frequency_Hz:                %f\n", frequency_Hz);
   printf("wspr_delta:                  %f\n", wspr_delta);
   printf("normalized tuning frequency: %f\n", frequency_Hz / system_clock_frequency);
@@ -182,7 +191,7 @@ void nco_wspr::initialise_waveform_buffer(double delta, double transmission_offs
        word_index++) {
     if (buffer[word_index] == buffer[word_index + number_of_words_in_a_DMA_block] &&
         buffer[word_index] == buffer[word_index + 2*number_of_words_in_a_DMA_block] &&
-        buffer[word_index] == buffer[word_index + 3* number_of_words_in_a_DMA_block]) { 
+        buffer[word_index] == buffer[word_index + 3* number_of_words_in_a_DMA_block]) {
       printf("%4.4x %4.4x %4.4x %4.4x\n", buffer[word_index],
              buffer[word_index + number_of_words_in_a_DMA_block],
              buffer[word_index + 2*number_of_words_in_a_DMA_block],
@@ -198,7 +207,7 @@ void nco_wspr::initialise_waveform_buffer(double delta, double transmission_offs
 }
 
 void nco_wspr::setup_dma_channels() {
-  const uint32_t * address = (uint32_t *) ctr2_block[1];  // first symbol DMA source address
+  const uint32_t * address = reinterpret_cast<uint32_t *>(ctr2_block[1]);  // first symbol DMA source address
   printf("first symbol bit pattern address: %4.4x\n", address);
   // create a DMA channel that will DMA the symbol bit patterns to the PIO
   symbol_dma = dma_claim_unused_channel(true);
@@ -212,73 +221,65 @@ void nco_wspr::setup_dma_channels() {
   irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
   irq_set_enabled(DMA_IRQ_0, true);
   // this DMA control setup triggers symbol_dma to run a total of 267-297 times (given that the first pair is skipped)
-  //address = &ctr0_block[symbols[0] * (DMA_blocks_per_symbol + 1)*2] + 2;
-  //address = &ctr0_block[symbols[0] * (DMA_blocks_per_symbol + 1)*2];
   address = ctr0_starts[symbols[0]];
   program_symbol_dma = dma_claim_unused_channel(true);
   program_symbol_dma_cfg = dma_channel_get_default_config(program_symbol_dma);
   channel_config_set_transfer_data_size(&program_symbol_dma_cfg, DMA_SIZE_32);
   channel_config_set_read_increment(&program_symbol_dma_cfg, true);
   channel_config_set_write_increment(&program_symbol_dma_cfg, true);
-  channel_config_set_ring(&program_symbol_dma_cfg, true, 3); // byte boundary on write ptr
+  channel_config_set_ring(&program_symbol_dma_cfg, true, 3);  // byte boundary on write ptr
   dma_channel_configure(program_symbol_dma, &program_symbol_dma_cfg,
                         &dma_hw->ch[symbol_dma].al3_transfer_count,  // write to symbol_dma transfer count then source
-                        address, // symbol_dma next data for first symbol
-                        2,       // 2 32 bit transfers
-                        false // don't start yet
-                        );
+                        address,  // symbol_dma next data for first symbol
+                        2,        // 2 32 bit transfers
+                        false);   // don't start yet
   // address points to a block that is 266 pairs (size, tone ptr) long with zeros at the end, when zeros are hit,
   // this will trigger the next symbol
-  
+
   channel_config_set_chain_to(&symbol_dma_cfg, program_symbol_dma);  // when 10,000 words have been transferred,
-                                                                 // go to next transfer
+                                                                     // go to next transfer
   channel_config_set_irq_quiet(&symbol_dma_cfg, true);
   // moved to capture all changes to symbol_dma_cfg
   dma_channel_configure(symbol_dma, &symbol_dma_cfg,
                         &pio->txf[sm],
-                        address, // first control block for data transfer to PIO
+                        address,            // first control block for data transfer to PIO
                         last[symbols[0]],   // number of 32 bit transfers for a partial block
-                        false // don't start yet
-                        );
+                        false);             // don't start yet
   program_symbol_dma_count = 0;
   dma_channel_set_irq0_enabled(program_symbol_dma, true);
-  //channel_config_set_irq_quiet(&program_symbol_dma_cfg, true);
+  // channel_config_set_irq_quiet(&program_symbol_dma_cfg, true);
 
   // now we need DMA transfers to setup for the next symbol by programming program_symbol_dma and symbol_dma
   program_control0_count = 0;
-  address = &ctr1_block[1] ;  // for first execution, index into the second message symbol
+  address = &ctr1_block[1];  // for first execution, index into the second message symbol
   program_control0 = dma_claim_unused_channel(true);
   program_control0_cfg = dma_channel_get_default_config(program_control0);
   channel_config_set_transfer_data_size(&program_control0_cfg, DMA_SIZE_32);
   channel_config_set_read_increment(&program_control0_cfg, true);
   channel_config_set_write_increment(&program_control0_cfg, false);
   dma_channel_configure(program_control0, &program_control0_cfg,
-                        &dma_hw->ch[program_symbol_dma].read_addr, // write to program_symbol_dma read address
-                        address, // next tone to send
-                        1,       // 1 32 bit transfers
-                        false // don't start yet
-                        );
+                        &dma_hw->ch[program_symbol_dma].read_addr,  // write to program_symbol_dma read address
+                        address,  // next tone to send
+                        1,        // 1 32 bit transfers
+                        false);   // don't start yet
   dma_channel_set_irq0_enabled(program_control0, true);
   // now we need to reprogram symbol_dma and retrigger it to start the next tone
   first_time_symbol_dma_count = 0;
-  address = &ctr2_block[1*2]; // each entry is 2 words long, point to the second entry (1)
+  address = &ctr2_block[1*2];  // each entry is 2 words long, point to the second entry (1)
   first_time_symbol_dma = dma_claim_unused_channel(true);
   first_time_symbol_dma_cfg = dma_channel_get_default_config(first_time_symbol_dma);
   channel_config_set_transfer_data_size(&first_time_symbol_dma_cfg, DMA_SIZE_32);
   channel_config_set_read_increment(&first_time_symbol_dma_cfg, true);
   channel_config_set_write_increment(&first_time_symbol_dma_cfg, true);
-  channel_config_set_ring(&first_time_symbol_dma_cfg, true, 3); // byte boundary on write ptr
+  channel_config_set_ring(&first_time_symbol_dma_cfg, true, 3);  // byte boundary on write ptr
   dma_channel_configure(first_time_symbol_dma, &first_time_symbol_dma_cfg,
                         &dma_hw->ch[symbol_dma].al3_transfer_count,  // write to control transfer count then source
                         address,  // symbol_dma next data for first symbol
-                        2,                        // 2 32 bit transfers
-                        false // don't start yet
-                        );
-  
+                        2,        // 2 32 bit transfers
+                        false);   // don't start yet
   dma_channel_set_irq0_enabled(first_time_symbol_dma, true);
 }
 nco_wspr::nco_wspr(const uint8_t rf_pin, uint8_t * message, uint32_t buffer_select) {
-
   use_table = true;
   gpio_init(rf_pin);
   gpio_set_dir(rf_pin, GPIO_OUT);
@@ -288,12 +289,12 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, uint8_t * message, uint32_t buffer_sele
   for (int i = 0; i < number_of_symbols_in_a_message; i++) {
     symbols[i] = message[i];
   }
-  
+
   // The PIO contains a very simple program that reads a 32-bit word
   // from the FIFO and sends 1 bit per clock to an IO pin
   uint offset = pio_add_program(pio, &stream_bits_program);
   sm = pio_claim_unused_sm(pio, true);
-  stream_bits_program_init(pio, sm, offset, rf_pin); // GPIO0
+  stream_bits_program_init(pio, sm, offset, rf_pin);  // GPIO0
 
   // nco_dma transfers the pre-generated blocks to PIO and chains to intra_symbol_dma when it completes
   // intra_symbol_dma programs nco_dma for the duration of a symbol and chains to end_symbol_dma
@@ -309,9 +310,8 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, uint8_t * message, uint32_t buffer_sele
   dma_channel_configure(nco_dma, &nco_dma_cfg,
                         &pio->txf[sm],
                         NULL,
-                        10000,  // 10 32 bit transfers
-                        false // don't start yet
-                        );
+                        10000,   // 10 32 bit transfers
+                        false);  // don't start yet
   // initialize RAM buffer using a FLASH entry
   uint32_t * buffer_ptr = buffer;
   const uint32_t * source_ptr = &bit_pattern_table[buffer_select *  number_of_words_in_a_DMA_block *
@@ -341,7 +341,7 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message,
   // from the FIFO and sends 1 bit per clock to an IO pin
   uint offset = pio_add_program(pio, &stream_bits_program);
   sm = pio_claim_unused_sm(pio, true);
-  stream_bits_program_init(pio, sm, offset, rf_pin); // GPIO0
+  stream_bits_program_init(pio, sm, offset, rf_pin);  // GPIO0
 
   // 1 transfers the pre-generated blocks of 256-bits to PIO
   // The second DMA configures the first from a table of start addresses
@@ -356,9 +356,8 @@ nco_wspr::nco_wspr(const uint8_t rf_pin, double frequency_Hz, uint8_t * message,
   dma_channel_configure(nco_dma, &nco_dma_cfg,
                         &pio->txf[sm],
                         NULL,
-                        10000,  // 10 32 bit transfers
-                        false // don't start yet
-                        );
+                        10000,    // 10 32 bit transfers
+                        false);   // don't start yet
 }
 
 void nco_wspr::tear_down_dma() {
@@ -393,30 +392,28 @@ void nco_wspr::output_wspr_message(bool default_sending_mode) {
   if (default_sending_mode) {
     for (uint32_t symbol = 0u; symbol < number_of_symbols_in_a_message; symbol++) {
       // get the buffer address to use
-      const uint32_t * address = &buffer[symbols[symbol] * number_of_words_in_a_DMA_block] ;
+      const uint32_t * address = &buffer[symbols[symbol] * number_of_words_in_a_DMA_block];
       for (uint32_t symbol_duration = 0u; symbol_duration < DMA_blocks_per_symbol; symbol_duration++) {  // repeat
         while (dma_channel_is_busy(nco_dma)) {
           tight_loop_contents();
         }
         if (pio->fdebug) {
-          //printf("pio stall, potential lost samples debug: %x\n", pio->fdebug);
-          pio->fdebug = 0xffffffff; // clear all
+          // printf("pio stall, potential lost samples debug: %x\n", pio->fdebug);
+          pio->fdebug = 0xffffffff;  // clear all
         }
         if (symbol_duration != (DMA_blocks_per_symbol - 1)) {  // check for last transfer
           dma_channel_configure(nco_dma, &nco_dma_cfg,
                                 &pio->txf[sm],
                                 address,
                                 10000,  // 10,000 word, 32 bit transfers
-                                true // start
-                                );
+                                true);  // start
         } else {
           dma_channel_configure(nco_dma, &nco_dma_cfg,
                                 &pio->txf[sm],
                                 address,
-                                6667,  // part of a block 32 bit transfers
-                                true // start
-                                );
-        }        
+                                6667,   // part of a block 32 bit transfers
+                                true);  // start
+        }
       }
       printf("m[%d]:%d\n", symbol, symbols[symbol]);
     }
@@ -424,7 +421,7 @@ void nco_wspr::output_wspr_message(bool default_sending_mode) {
   } else {
     // start first DMA transfer, this block chains to another starting a chain of DMA processes that perform the
     // transfer of the entire message
-    const uint32_t * address = &buffer[symbols[0] * number_of_words_in_a_DMA_block] ;
+    const uint32_t * address = &buffer[symbols[0] * number_of_words_in_a_DMA_block];
     uint64_t start_time = time_us_64();
     printf("inside output_message, first symbol bit pattern address: %4.4x\n", address);
     dma_start_channel_mask(1u << symbol_dma);  // start DMA control that was setup in setup_dma_channels
@@ -436,7 +433,7 @@ void nco_wspr::output_wspr_message(bool default_sending_mode) {
         not_busy_count = 0;
       } else {
         not_busy_count++;
-      }                  
+      }
       if (first_time_symbol_dma_count == 162) {
         printf(" %d symbol_dma\n", dma_channel_is_busy(symbol_dma));
         printf(" %d program_symbol_dma\n", dma_channel_is_busy(program_symbol_dma));
@@ -444,7 +441,7 @@ void nco_wspr::output_wspr_message(bool default_sending_mode) {
         printf(" %d first_time_symbol_dma\n", dma_channel_is_busy(first_time_symbol_dma));
         break;
       }
-      //tight_loop_contents();
+      // tight_loop_contents();
     }
     uint64_t end_time = time_us_64();
     printf("transmission time: %" PRIu64 " micro seconds\n", end_time - start_time);
@@ -453,10 +450,10 @@ void nco_wspr::output_wspr_message(bool default_sending_mode) {
     printf("program_control0 interrupted %u times\n", program_control0_count);
     printf("first_time_symbol_dma interrupt %u times\n", first_time_symbol_dma_count);
     if (pio->fdebug) {
-      //printf("pio stall, potential lost samples debug: %x\n", pio->fdebug);
-      pio->fdebug = 0xffffffff; // clear all
+      // printf("pio stall, potential lost samples debug: %x\n", pio->fdebug);
+      pio->fdebug = 0xffffffff;  // clear all
     }
     tear_down_dma();
-    //setup_dma_channels();
+    // setup_dma_channels();
   }
 }

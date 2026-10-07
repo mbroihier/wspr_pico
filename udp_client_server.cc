@@ -315,7 +315,7 @@ void UDP_Client_Server::send_packet(ip_addr_t remote_ip_address, uint16_t remote
   //  send_pbuf->payload = buffer;
   send_pbuf->tot_len = buffer_size;
   send_pbuf->len = buffer_size;
-  //printf("sending message: %s", send_pbuf->payload);
+  // printf("sending message: %s", send_pbuf->payload);
   cyw43_arch_lwip_begin();
   int err = udp_sendto(client_pcb, send_pbuf, &remote_ip_address, remote_port);
   cyw43_arch_lwip_end();
@@ -330,7 +330,7 @@ void UDP_Client_Server::send_packet(ip_addr_t remote_ip_address, uint16_t remote
     }
     if (old_packet_count != context_info.rx_cnt) {
       old_packet_count = context_info.rx_cnt;
-      //printf("%s ", packetBufferR);
+      // printf("%s ", packetBufferR);
       printf(" received reply from remote IP addr %s, port %d, payload should be 48 bytes\n",
              ip4addr_ntoa(&context_info.remote_ip_addr),
              context_info.remote_port);
@@ -351,7 +351,7 @@ void UDP_Client_Server::send_packet(ip_addr_t remote_ip_address, uint16_t remote
 //
 //---------------------------------------------------------------------- */
 uint8_t * UDP_Client_Server::get_packetBufferR_addr() {
-  return (uint8_t *) packetBufferR;
+  return reinterpret_cast<uint8_t *>(packetBufferR);
 }
 //---------------------------------------------------------------------- */
 //
@@ -362,5 +362,5 @@ uint8_t * UDP_Client_Server::get_packetBufferR_addr() {
 //
 //---------------------------------------------------------------------- */
 uint8_t * UDP_Client_Server::get_packetBufferT_addr() {
-  return (uint8_t *) packetBufferT;
+  return reinterpret_cast<uint8_t *>(packetBufferT);
 }

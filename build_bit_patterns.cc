@@ -1,3 +1,14 @@
+/* ---------------------------------------------------------------------- */
+/*
+ *      build_bit_patterns -- build the bit patterns to produce the WSPR
+ *                            frequencies needed
+ *
+ *      Copyright (C) 2026
+ *          Mark Broihier
+ *
+ */
+
+/* ---------------------------------------------------------------------- */
 #include "build_bit_patterns.h"
 build_bit_patterns::build_bit_patterns(double frequency_Hz,
                                        double transmission_offset,
@@ -46,7 +57,7 @@ build_bit_patterns::build_bit_patterns(double frequency_Hz,
        word_index++) {
     if (buffer[word_index] == buffer[word_index + number_of_words_in_a_DMA_block] &&
         buffer[word_index] == buffer[word_index + 2*number_of_words_in_a_DMA_block] &&
-        buffer[word_index] == buffer[word_index + 3* number_of_words_in_a_DMA_block]) { 
+        buffer[word_index] == buffer[word_index + 3* number_of_words_in_a_DMA_block]) {
       printf("%4.4x %4.4x %4.4x %4.4x\n", buffer[word_index],
              buffer[word_index + number_of_words_in_a_DMA_block],
              buffer[word_index + 2*number_of_words_in_a_DMA_block],
